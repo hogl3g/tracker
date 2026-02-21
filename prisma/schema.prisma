@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Project {
+  id        String     @id @default(cuid())
+  name      String
+  address   String
+  description String?
+  status    String     @default("active") // active, completed, on-hold
+  dateStarted DateTime
+  dateCompleted DateTime?
+  
+  // Quality & Metrics
+  qualityRating Int? // 1-10 scale
+  unitsCompleted Int @default(0)
+  unitsPlanned Int?
+  
+  // On-site information
+  issues    String? // Any issues encountered
+  materialsNeeded MaterialNeed[]
+  installations Installation[]
+  
+  // Additional tracking
+  supervisor String?
+  notes     String?
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Installation {
+  id        String     @id @default(cuid())
+  projectId String
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  address   String // Specific installation address
+  unitNumber String?
+  installDate DateTime
+  completionDate DateTime?
+  
+  qualityScore Int? // 1-10 scale
+  status    String @default("pending") // pending, in-progress, completed, failed
+  issuesEncountered String?
+  notes     String?
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model MaterialNeed {
+  id        String     @id @default(cuid())
+  projectId String
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  materialName String
+  quantity  Int
+  unit      String // "pieces", "boxes", "meters", etc.
+  status    String @default("needed") // needed, ordered, received, used
+  dateNeeded DateTime?
+  dateReceived DateTime?
+  cost      Float?
+  supplier  String?
+  notes     String?
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Report {
+  id        String     @id @default(cuid())
+  projectId String?
+  
+  reportType String // "daily", "weekly", "monthly", "completion"
+  generatedAt DateTime @default(now())
+  
+  // Summary data
+  totalUnitsCompleted Int
+  totalUnitsPlanned Int
+  completionPercentage Float
+  averageQualityScore Float?
+  issuesCount Int
+  
+  // Export format
+  content   String? // JSON or formatted report data
+  
+  createdAt DateTime  @default(now())
+}
+
+// NextAuth models
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("worker")
+  accounts      Account[]
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
